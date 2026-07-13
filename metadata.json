@@ -1,0 +1,6 @@
+{
+  "name": "AuraSmile Dental Clinic",
+  "description": "A premium, modern multi-page website for AuraSmile Dental Clinic, featuring advanced treatment showcases, interactive before/after transformation sliders, and a smart visual style.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
