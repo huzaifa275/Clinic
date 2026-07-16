@@ -1,18 +1,23 @@
 import React from 'react';
 import { PageType } from '../types';
 import { Sparkles, Phone, Mail, MapPin, Clock, ArrowUp } from 'lucide-react';
+import { useSettings } from '../SettingsContext';
 
 interface FooterProps {
   setCurrentPage: (page: PageType) => void;
 }
 
 export default function Footer({ setCurrentPage }: FooterProps) {
+  const { settings } = useSettings();
   const handleNavClick = (page: PageType) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const currentYear = new Date().getFullYear();
+  const workingHours = settings?.working_hours_json || {};
+  const phoneVal = settings?.whatsapp_number || settings?.admin_whatsapp || '+1 (800) 555-0199';
+  const cleanPhone = phoneVal.replace(/[\s\-\(\)]/g, '');
 
   return (
     <footer className="bg-slate-900 text-slate-400 border-t border-slate-800" id="app-footer">
@@ -33,8 +38,8 @@ export default function Footer({ setCurrentPage }: FooterProps) {
               <MapPin className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="text-white font-bold text-sm">Primacy Location</h4>
-              <p className="text-xs text-slate-400">450 Wellness Plaza, Suite 100, New York</p>
+              <h4 className="text-white font-bold text-sm">Primary Location</h4>
+              <p className="text-xs text-slate-400">{settings?.clinic_address || '450 Wellness Plaza, Suite 100, New York'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 justify-center md:justify-start">
@@ -43,7 +48,7 @@ export default function Footer({ setCurrentPage }: FooterProps) {
             </div>
             <div>
               <h4 className="text-white font-bold text-sm">Direct Clinical Line</h4>
-              <p className="text-xs text-slate-400">Call +1 (800) 555-0199 for direct booking</p>
+              <p className="text-xs text-slate-400">Call <a href={`tel:${cleanPhone}`} className="hover:text-teal-400 underline">{phoneVal}</a> for direct booking</p>
             </div>
           </div>
         </div>
@@ -55,10 +60,19 @@ export default function Footer({ setCurrentPage }: FooterProps) {
           {/* Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg bg-teal-500 text-white flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <span className="text-xl font-bold font-display text-white">AuraSmile</span>
+              {settings?.clinic_logo ? (
+                <img 
+                  src={settings.clinic_logo} 
+                  alt="Clinic Logo" 
+                  className="w-9 h-9 rounded-lg object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-lg bg-teal-500 text-white flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+              )}
+              <span className="text-xl font-bold font-display text-white">{settings?.clinic_name || 'AuraSmile'}</span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
               Experience dental excellence where clinical genius meets aesthetic mastery. We offer premium, painless, state-of-the-art treatments customized for your optimal wellness.
@@ -108,15 +122,27 @@ export default function Footer({ setCurrentPage }: FooterProps) {
             <ul className="space-y-3 text-sm">
               <li className="flex justify-between border-b border-slate-800 pb-2">
                 <span>Monday - Friday</span>
-                <span className="text-white font-medium">8:00 AM - 7:00 PM</span>
+                <span className="text-white font-medium text-right">
+                  {workingHours['Monday']?.active 
+                    ? `${workingHours['Monday']?.open} - ${workingHours['Monday']?.close}`
+                    : 'Closed'}
+                </span>
               </li>
               <li className="flex justify-between border-b border-slate-800 pb-2">
                 <span>Saturday</span>
-                <span className="text-white font-medium">9:00 AM - 4:00 PM</span>
+                <span className="text-white font-medium text-right">
+                  {workingHours['Saturday']?.active 
+                    ? `${workingHours['Saturday']?.open} - ${workingHours['Saturday']?.close}`
+                    : 'Closed'}
+                </span>
               </li>
               <li className="flex justify-between border-b border-slate-800 pb-2">
                 <span>Sunday</span>
-                <span className="text-rose-400 font-medium">Closed (Emergency Only)</span>
+                <span className={`font-medium text-right ${workingHours['Sunday']?.active ? 'text-white' : 'text-rose-400'}`}>
+                  {workingHours['Sunday']?.active 
+                    ? `${workingHours['Sunday']?.open} - ${workingHours['Sunday']?.close}`
+                    : 'Closed'}
+                </span>
               </li>
               <li className="pt-2 text-xs text-slate-500">
                 *Appointments strictly secured via reservation.
@@ -149,7 +175,7 @@ export default function Footer({ setCurrentPage }: FooterProps) {
 
         {/* Bottom copyright line */}
         <div className="mt-8 pt-8 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500">
-          <p>© {currentYear} AuraSmile Dental Clinic. All clinical rights reserved.</p>
+          <p>© {currentYear} {settings?.clinic_name || 'AuraSmile'} Dental Clinic. All clinical rights reserved.</p>
           <div className="flex gap-4 mt-4 sm:mt-0">
             <span className="hover:text-slate-300 transition-colors">Privacy Policy</span>
             <span>•</span>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PageType } from '../types';
 import { Sparkles, Menu, X, PhoneCall } from 'lucide-react';
+import { useSettings } from '../SettingsContext';
 
 interface NavbarProps {
   currentPage: PageType;
@@ -9,6 +10,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarProps) {
+  const { settings } = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [password, setPassword] = useState('');
@@ -52,7 +54,8 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, label: 'Admin Session Portal' })
+        body: JSON.stringify({ password, label: 'Admin Session Portal' }),
+        credentials: 'include'
       });
 
       const data = await res.json();
@@ -64,7 +67,9 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
       }
 
       // Dispatch the successful login event for App.tsx to catch and re-auth
-      window.dispatchEvent(new CustomEvent('admin-login-success'));
+      window.dispatchEvent(new CustomEvent('admin-login-success', {
+        detail: { device: data.device }
+      }));
       setCurrentPage('admin');
       setShowLoginModal(false);
       setPassword('');
@@ -76,7 +81,7 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       window.location.reload();
     } catch (err) {
       console.error('Logout failed:', err);
@@ -93,13 +98,22 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
             className="flex items-center gap-2.5 cursor-pointer group select-none"
             id="brand-logo"
           >
-            <div className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-tr from-teal-500 to-teal-400 text-white shadow-md shadow-teal-500/10 group-hover:scale-105 transition-all">
-              <Sparkles className="w-5.5 h-5.5" />
-              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-teal-300 rounded-full animate-ping" />
-            </div>
+            {settings?.clinic_logo ? (
+              <img 
+                src={settings.clinic_logo} 
+                alt="Clinic Logo" 
+                className="w-11 h-11 rounded-xl object-cover shadow-md shadow-teal-500/10 group-hover:scale-105 transition-all"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-tr from-teal-500 to-teal-400 text-white shadow-md shadow-teal-500/10 group-hover:scale-105 transition-all">
+                <Sparkles className="w-5.5 h-5.5" />
+                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-teal-300 rounded-full animate-ping" />
+              </div>
+            )}
             <div>
               <span className="text-xl font-extrabold font-display tracking-tight text-slate-900 group-hover:text-teal-600 transition-colors">
-                AuraSmile
+                {settings?.clinic_name || 'AuraSmile'}
               </span>
               <span className="block text-[10px] font-semibold text-teal-600 tracking-wider uppercase">
                 Premium Dental Clinic
@@ -131,11 +145,11 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
           {/* CTA, Booking & Top-right Hamburger Menu (3 lines) */}
           <div className="hidden md:flex items-center gap-4">
             <a 
-              href="tel:+18005550199" 
+              href={`tel:${(settings?.whatsapp_number || settings?.admin_whatsapp || '+18005550199').replace(/[\s\-\(\)]/g, '')}`} 
               className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-teal-600 transition-colors"
             >
               <PhoneCall className="w-3.5 h-3.5 text-teal-500" />
-              +1 (800) 555-0199
+              {settings?.whatsapp_number || settings?.admin_whatsapp || '+1 (800) 555-0199'}
             </a>
             <button
               onClick={() => {
@@ -234,11 +248,11 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
             ))}
             <div className="pt-4 border-t border-slate-100 flex flex-col gap-3 px-4">
               <a 
-                href="tel:+18005550199" 
+                href={`tel:${(settings?.whatsapp_number || settings?.admin_whatsapp || '+18005550199').replace(/[\s\-\(\)]/g, '')}`} 
                 className="flex items-center gap-2 text-sm font-semibold text-slate-700"
               >
                 <PhoneCall className="w-4 h-4 text-teal-500" />
-                +1 (800) 555-0199
+                {settings?.whatsapp_number || settings?.admin_whatsapp || '+1 (800) 555-0199'}
               </a>
               <button
                 onClick={() => {
@@ -296,7 +310,7 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
 
       {/* Sleek Password Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in" id="admin-login-modal">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" id="admin-login-modal">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-[90%] max-w-md relative">
             <button
               onClick={() => {
@@ -314,7 +328,7 @@ export default function Navbar({ currentPage, setCurrentPage, isAdmin }: NavbarP
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-teal-50 text-teal-600 border border-teal-100 mb-2 animate-pulse">
                   <span className="text-xl">🔐</span>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 font-display">AuraSmile Admin Login</h3>
+                <h3 className="text-lg font-bold text-slate-900 font-display">{settings?.clinic_name || 'AuraSmile'} Admin Login</h3>
                 <p className="text-xs text-slate-500 font-medium font-heading leading-relaxed">
                   Please authenticate with the server to manage clinic operations.
                 </p>

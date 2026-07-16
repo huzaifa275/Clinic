@@ -11,6 +11,12 @@ export interface ClinicSettings {
   time_slot_interval?: number;
   whatsapp_number?: string;
   clinic_name?: string;
+  clinic_logo?: string;
+  clinic_address?: string;
+  contact_email?: string;
+  admin_name?: string;
+  admin_profile_image?: string;
+  [key: string]: any;
 }
 
 export interface Procedure {

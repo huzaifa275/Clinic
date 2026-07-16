@@ -61,9 +61,9 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
       setError(null);
       
       const [resSettingsRaw, resServicesRaw, resAppsRaw] = await Promise.all([
-        fetch('/api/settings'),
-        fetch('/api/procedures'),
-        fetch('/api/appointments')
+        fetch('/api/settings', { credentials: 'include' }),
+        fetch('/api/procedures', { credentials: 'include' }),
+        fetch('/api/appointments', { credentials: 'include' })
       ]);
 
       if (!resSettingsRaw.ok || !resServicesRaw.ok || !resAppsRaw.ok) {
@@ -103,7 +103,8 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
       const res = await fetch(`/api/appointments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status }),
+        credentials: 'include'
       });
       if (res.ok) {
         await fetchData();
@@ -121,7 +122,8 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
     try {
       setSaving(true);
       const res = await fetch(`/api/appointments/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       });
       if (res.ok) {
         await fetchData();
@@ -153,7 +155,8 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
           duration_minutes: Number(editingService.duration_minutes),
           slot_step_minutes: Number(editingService.slot_step_minutes) || Number(editingService.duration_minutes) || 30,
           active: editingService.active !== false
-        })
+        }),
+        credentials: 'include'
       });
 
       if (res.ok) {
@@ -173,7 +176,8 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
     try {
       setSaving(true);
       const res = await fetch(`/api/procedures/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       });
       if (res.ok) {
         await fetchData();
@@ -195,11 +199,13 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
       const res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(settings),
+        credentials: 'include'
       });
       if (res.ok) {
         const updated = await res.json();
         setSettings(updated);
+        window.dispatchEvent(new CustomEvent('settings-updated'));
         alert('Operational settings updated successfully!');
         await fetchData();
       }
@@ -284,33 +290,36 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
   }
 
   // --- STATS CALCULATIONS ---
+  const safeAppointments = Array.isArray(appointments) ? appointments : [];
+  const safeServices = Array.isArray(services) ? services : [];
+
   const todayIso = new Date().toISOString().split('T')[0];
 
-  const appointmentsToday = appointments.filter(a => {
-    const appDate = a.start_at.split('T')[0];
+  const appointmentsToday = safeAppointments.filter(a => {
+    const appDate = (a.start_at || '').split('T')[0] || '';
     return appDate === todayIso;
   });
 
-  const upcomingAppointments = appointments.filter(a => {
-    const appDate = a.start_at.split('T')[0];
+  const upcomingAppointments = safeAppointments.filter(a => {
+    const appDate = (a.start_at || '').split('T')[0] || '';
     return appDate >= todayIso && a.status === 'BOOKED';
   });
 
-  const completedAppointments = appointments.filter(a => a.status === 'DONE');
-  const canceledAppointments = appointments.filter(a => a.status === 'CANCELED');
+  const completedAppointments = safeAppointments.filter(a => a.status === 'DONE');
+  const canceledAppointments = safeAppointments.filter(a => a.status === 'CANCELED');
 
   // Revenue counts ONLY completed (DONE) appointments
   const totalRevenue = completedAppointments.reduce((acc, a) => {
-    const service = services.find(s => s.id === a.procedure_id);
-    return acc + (service ? service.price : 0);
+    const service = safeServices.find(s => s.id === a.procedure_id);
+    return acc + (service ? (service.price || 0) : 0);
   }, 0);
 
   // --- FILTERED APPOINTMENTS ---
-  const filteredAppointments = appointments.filter(a => {
+  const filteredAppointments = safeAppointments.filter(a => {
     const matchesSearch = 
-      a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.phone.includes(searchTerm) ||
-      (a.id && a.id.toLowerCase().includes(searchTerm.toLowerCase()));
+      (a.name || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+      (a.phone || '').includes(searchTerm || '') ||
+      (a.id && a.id.toLowerCase().includes((searchTerm || '').toLowerCase()));
 
     if (!matchesSearch) return false;
 
@@ -1020,56 +1029,166 @@ export default function AdminPanel({ onLogout }: AdminPanelProps) {
             <div className="space-y-1.5">
               <h2 className="text-xl font-extrabold font-display text-slate-900">Clinic Operational Settings</h2>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Configure primary metadata including clinic names, targeting WhatsApp handles, and timezone guidelines.
+                Configure primary metadata including clinic names, branding logos, contact lines, and active clinician profiles.
               </p>
             </div>
 
             {settings && (
-              <form onSubmit={handleSaveSettings} className="space-y-6 max-w-2xl text-xs font-semibold">
+              <form onSubmit={handleSaveSettings} className="space-y-8 max-w-3xl text-xs font-semibold">
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
-                      <Building className="w-3.5 h-3.5 text-slate-400" />
-                      Clinic Display Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. AuraSmile Dental Clinic"
-                      value={settings.clinic_name || ''}
-                      onChange={e => setSettings({ ...settings, clinic_name: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
-                    />
-                  </div>
+                {/* 1. BRANDING & CONTACT INFO */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-2xs">
+                  <h3 className="text-xs font-bold text-teal-600 tracking-wide uppercase border-b border-slate-100 pb-2">
+                    1. Branding & contact channels
+                  </h3>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      WhatsApp Notification Target Number
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. +18005550199"
-                      value={settings.whatsapp_number || ''}
-                      onChange={e => setSettings({ ...settings, whatsapp_number: e.target.value, admin_whatsapp: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 focus:bg-white rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
-                    />
-                    <p className="text-[10px] text-slate-400 leading-snug">
-                      The primary reception line for scheduling reports.
-                    </p>
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+                        <Building className="w-3.5 h-3.5 text-slate-400" />
+                        Clinic Display Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. AuraSmile Dental Clinic"
+                        value={settings.clinic_name || ''}
+                        onChange={e => setSettings({ ...settings, clinic_name: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
 
-                  <div className="space-y-2 col-span-1 sm:col-span-2">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Operational Timezone</label>
-                    <input
-                      type="text"
-                      required
-                      value={settings.timezone}
-                      onChange={e => setSettings({ ...settings, timezone: e.target.value })}
-                      className="w-full max-w-md bg-slate-50 border border-slate-200 focus:bg-white rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
-                    />
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+                        Clinic Logo Image URL
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="e.g. https://images.unsplash.com/... or /logo.png"
+                        value={settings.clinic_logo || ''}
+                        onChange={e => setSettings({ ...settings, clinic_logo: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        WhatsApp / Contact Number
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. +1 (800) 555-0199"
+                        value={settings.whatsapp_number || ''}
+                        onChange={e => setSettings({ ...settings, whatsapp_number: e.target.value, admin_whatsapp: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+                        Inquiries Email Address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. appointments@aurasmile.com"
+                        value={settings.contact_email || ''}
+                        onChange={e => setSettings({ ...settings, contact_email: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-2 col-span-1 sm:col-span-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                        Physical Clinic Address
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. 450 Wellness Plaza, Suite 100, New York, NY"
+                        value={settings.clinic_address || ''}
+                        onChange={e => setSettings({ ...settings, clinic_address: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. CLINICIAN / ADMIN PERSONNEL */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-2xs">
+                  <h3 className="text-xs font-bold text-teal-600 tracking-wide uppercase border-b border-slate-100 pb-2">
+                    2. Primary Clinician Profile
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                        Admin Doctor Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Dr. Evelyn Sterling"
+                        value={settings.admin_name || ''}
+                        onChange={e => setSettings({ ...settings, admin_name: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                        Doctor Profile Photo URL
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="e.g. https://images.unsplash.com/photo-1559839734-2b71ea197ec2"
+                        value={settings.admin_profile_image || ''}
+                        onChange={e => setSettings({ ...settings, admin_profile_image: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. ENGINE SCHEDULING CONFIG */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-6 shadow-2xs">
+                  <h3 className="text-xs font-bold text-teal-600 tracking-wide uppercase border-b border-slate-100 pb-2">
+                    3. Scheduling Engine Configuration
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        Time Slot Interval (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        value={settings.time_slot_interval || 30}
+                        onChange={e => setSettings({ ...settings, time_slot_interval: Number(e.target.value) })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                      <p className="text-[10px] text-slate-400 leading-snug">
+                        Determines the time granularity gap between suggested calendar slots.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                        Operational Timezone
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={settings.timezone}
+                        onChange={e => setSettings({ ...settings, timezone: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-teal-500/50 rounded-xl px-4 py-3 text-xs outline-none text-slate-800 font-medium"
+                      />
+                    </div>
                   </div>
                 </div>
 

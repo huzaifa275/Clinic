@@ -1,14 +1,36 @@
 import express from 'express';
 import path from 'path';
 import crypto from 'crypto';
+import session from 'express-session';
 import { createServer as createViteServer } from 'vite';
 import { db, hashPassword, Procedure, Appointment, Notification, AdminDevice } from './server/db.js';
 import { GoogleGenAI } from '@google/genai';
 
+declare module 'express-session' {
+  interface SessionData {
+    admin?: boolean;
+    deviceId?: string;
+  }
+}
+
 const app = express();
 const PORT = 3000;
 
+app.set('trust proxy', 1);
+
 app.use(express.json());
+
+app.use(session({
+  secret: 'aurasmile-clinic-secret-key-1293847',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: true,
+    sameSite: 'none',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  }
+}));
 
 // Helper to parse cookies from request headers
 function getCookies(req: express.Request): Record<string, string> {
@@ -27,11 +49,16 @@ function getCookies(req: express.Request): Record<string, string> {
 
 // Authentication Middleware
 function authenticateAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.session && req.session.admin === true) {
+    next();
+    return;
+  }
+
   const cookies = getCookies(req);
   const token = cookies['trusted_device'];
 
   if (!token) {
-    res.status(401).json({ error: 'Unauthorized. No device token found.' });
+    res.status(401).json({ error: 'Unauthorized. No active session or device token found.' });
     return;
   }
 
@@ -41,6 +68,12 @@ function authenticateAdmin(req: express.Request, res: express.Response, next: ex
   if (!device) {
     res.status(401).json({ error: 'Unauthorized. Invalid or revoked device.' });
     return;
+  }
+
+  // Update session
+  if (req.session) {
+    req.session.admin = true;
+    req.session.deviceId = device.id;
   }
 
   // Update last seen
@@ -102,13 +135,29 @@ app.post('/api/auth/login', (req, res) => {
 
   db.addDevice(newDevice);
 
+  // Set Session
+  if (req.session) {
+    req.session.admin = true;
+    req.session.deviceId = newDevice.id;
+  }
+
   // Set HTTPOnly Cookie
-  res.setHeader('Set-Cookie', `trusted_device=${token}; HttpOnly; Path=/; Max-Age=31536000; SameSite=Lax`);
+  res.setHeader('Set-Cookie', `trusted_device=${token}; HttpOnly; Path=/; Max-Age=31536000; SameSite=None; Secure`);
   res.json({ success: true, device: { id: newDevice.id, label: newDevice.device_label } });
 });
 
-// Check if device is trusted
+// Check if device is trusted or session is active
 app.get('/api/auth/check', (req, res) => {
+  if (req.session && req.session.admin === true) {
+    const deviceId = req.session.deviceId || '';
+    const device = db.getDevices().find(d => d.id === deviceId);
+    res.json({
+      trusted: true,
+      device: device ? { id: device.id, label: device.device_label } : { id: 'session_dev', label: 'Admin Session' }
+    });
+    return;
+  }
+
   const cookies = getCookies(req);
   const token = cookies['trusted_device'];
 
@@ -125,13 +174,22 @@ app.get('/api/auth/check', (req, res) => {
     return;
   }
 
+  // Set Session
+  if (req.session) {
+    req.session.admin = true;
+    req.session.deviceId = device.id;
+  }
+
   db.updateDeviceSeen(device.id);
   res.json({ trusted: true, device: { id: device.id, label: device.device_label } });
 });
 
-// Logout device
+// Logout device and destroy session
 app.post('/api/auth/logout', (req, res) => {
-  res.setHeader('Set-Cookie', 'trusted_device=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
+  if (req.session) {
+    req.session.destroy(() => {});
+  }
+  res.setHeader('Set-Cookie', 'trusted_device=; HttpOnly; Path=/; Max-Age=0; SameSite=None; Secure');
   res.json({ success: true });
 });
 
@@ -558,9 +616,10 @@ app.post('/api/chat', async (req, res) => {
         .map(d => `${d}: ${settings.working_hours_json[d].open} – ${settings.working_hours_json[d].close}`)
         .join('\n');
       const clinicName = settings.clinic_name || 'AuraSmile Dental Clinic';
+      const address = settings.clinic_address || '450 Wellness Plaza, Suite 100, New York';
 
       res.json({
-        text: `${clinicName} is located at 450 Wellness Plaza, Suite 100.\n\nOur Business Hours:\n${hoursLines}\n\nWould you like to book an appointment?`,
+        text: `${clinicName} is located at ${address}.\n\nOur Business Hours:\n${hoursLines}\n\nWould you like to book an appointment?`,
         sessionState: { step: 'idle', bookingData: null }
       });
       return;
@@ -575,8 +634,9 @@ app.post('/api/chat', async (req, res) => {
     } else if (lowerText === '5' || lowerText.includes('speak to reception') || lowerText === 'speak' || lowerText === 'reception') {
       const settings = db.getSettings();
       const phone = settings.whatsapp_number || settings.admin_whatsapp || '+1 (800) 555-0199';
+      const email = settings.contact_email || 'appointments@aurasmile.com';
       res.json({
-        text: `You can speak to our receptionist by calling ${phone} or emailing contact@aurasmile.com.\n\nLet me know if you would like to book an appointment instead!`,
+        text: `You can speak to our receptionist by calling ${phone} or emailing ${email}.\n\nLet me know if you would like to book an appointment instead!`,
         sessionState: { step: 'idle', bookingData: null }
       });
       return;
@@ -947,7 +1007,7 @@ app.post('/api/chat', async (req, res) => {
 
       OFFICIAL CLINIC DATA (SOURCE OF TRUTH):
       Clinic Name: ${clinicName}
-      Location: 450 Wellness Plaza, Suite 100
+      Location: ${settings.clinic_address || '450 Wellness Plaza, Suite 100, New York'}
       Working Hours:
       ${workingHoursStr}
 

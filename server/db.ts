@@ -15,6 +15,12 @@ export interface ClinicSettings {
   time_slot_interval: number;
   whatsapp_number: string;
   clinic_name: string;
+  clinic_logo: string;
+  clinic_address: string;
+  contact_email: string;
+  admin_name: string;
+  admin_profile_image: string;
+  [key: string]: any; // future-proof clinic settings
 }
 
 export interface Procedure {
@@ -119,6 +125,11 @@ const initialSettings: ClinicSettings = {
   time_slot_interval: 30,
   whatsapp_number: '+18005550199',
   clinic_name: 'AuraSmile Dental Clinic',
+  clinic_logo: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=120',
+  clinic_address: '450 Wellness Plaza, Suite 100, New York, NY',
+  contact_email: 'appointments@aurasmile.com',
+  admin_name: 'Dr. Evelyn Sterling',
+  admin_profile_image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200',
 };
 
 const initialProcedures: Procedure[] = [
@@ -432,6 +443,26 @@ class Database {
           }
           if (this.state.clinic_settings.clinic_name === undefined) {
             this.state.clinic_settings.clinic_name = 'AuraSmile Dental Clinic';
+            updated = true;
+          }
+          if (this.state.clinic_settings.clinic_logo === undefined) {
+            this.state.clinic_settings.clinic_logo = 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=120';
+            updated = true;
+          }
+          if (this.state.clinic_settings.clinic_address === undefined) {
+            this.state.clinic_settings.clinic_address = '450 Wellness Plaza, Suite 100, New York, NY';
+            updated = true;
+          }
+          if (this.state.clinic_settings.contact_email === undefined) {
+            this.state.clinic_settings.contact_email = 'appointments@aurasmile.com';
+            updated = true;
+          }
+          if (this.state.clinic_settings.admin_name === undefined) {
+            this.state.clinic_settings.admin_name = 'Dr. Evelyn Sterling';
+            updated = true;
+          }
+          if (this.state.clinic_settings.admin_profile_image === undefined) {
+            this.state.clinic_settings.admin_profile_image = 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=200';
             updated = true;
           }
           if (updated) {

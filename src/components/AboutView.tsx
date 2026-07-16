@@ -2,12 +2,24 @@ import React from 'react';
 import { PageType } from '../types';
 import { CLINIC_DOCTORS, STERILIZATION_STANDARDS } from '../data';
 import { Sparkles, Award, ShieldCheck, Heart, User, Building, HeartHandshake } from 'lucide-react';
+import { useSettings } from '../SettingsContext';
 
 interface AboutViewProps {
   setCurrentPage: (page: PageType) => void;
 }
 
 export default function AboutView({ setCurrentPage }: AboutViewProps) {
+  const { settings } = useSettings();
+  
+  const doctors = [
+    {
+      ...CLINIC_DOCTORS[0],
+      name: settings?.admin_name || CLINIC_DOCTORS[0].name,
+      image: settings?.admin_profile_image || CLINIC_DOCTORS[0].image,
+    },
+    CLINIC_DOCTORS[1]
+  ];
+
   return (
     <div className="bg-slate-50 min-h-screen py-16 px-4 sm:px-6 lg:px-8" id="about-view-page">
       <div className="max-w-7xl mx-auto space-y-24">
@@ -72,7 +84,7 @@ export default function AboutView({ setCurrentPage }: AboutViewProps) {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {CLINIC_DOCTORS.map((doctor, idx) => (
+            {doctors.map((doctor, idx) => (
               <div 
                 key={idx} 
                 className="bg-white rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-slate-100 hover:shadow-[0_15px_40px_rgba(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row gap-8 relative overflow-hidden before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-r before:from-teal-400/5 before:to-emerald-400/5 before:blur-xl before:-z-10"

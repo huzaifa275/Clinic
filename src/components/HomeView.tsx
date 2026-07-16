@@ -14,12 +14,14 @@ import {
   Star,
   Users
 } from 'lucide-react';
+import { useSettings } from '../SettingsContext';
 
 interface HomeViewProps {
   setCurrentPage: (page: PageType) => void;
 }
 
 export default function HomeView({ setCurrentPage }: HomeViewProps) {
+  const { settings } = useSettings();
   // Take 3 services for preview
   const featuredServices = SERVICES_DATA.slice(0, 3);
   const mainBeforeAfter = BEFORE_AFTER_DATA[0];
@@ -61,7 +63,7 @@ export default function HomeView({ setCurrentPage }: HomeViewProps) {
             </h1>
             
             <p className="text-lg text-slate-600 font-medium max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Experience the pinnacle of high-end cosmetic dentistry and dental restorations at AuraSmile. We combine award-winning clinicians, state-of-the-art 3D imaging, and zero-pain protocols to craft the smile of your dreams.
+              Experience the pinnacle of high-end cosmetic dentistry and dental restorations at {settings?.clinic_name || 'AuraSmile'}. We combine award-winning clinicians, state-of-the-art 3D imaging, and zero-pain protocols to craft the smile of your dreams.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
@@ -138,7 +140,7 @@ export default function HomeView({ setCurrentPage }: HomeViewProps) {
                     <Star className="w-3.5 h-3.5 fill-amber-500" />
                   </div>
                   <p className="text-xs font-bold text-slate-900 leading-normal">
-                    "My veneers look beautifully real. AuraSmile is pure genius!"
+                    "My veneers look beautifully real. {settings?.clinic_name || 'AuraSmile'} is pure genius!"
                   </p>
                   <span className="block text-[10px] font-semibold text-slate-500 mt-1">— Sarah J.</span>
                 </div>
@@ -152,12 +154,12 @@ export default function HomeView({ setCurrentPage }: HomeViewProps) {
       <section className="py-12 md:py-16 bg-white" id="why-choose-us">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-xs font-extrabold text-teal-600 uppercase tracking-widest block">The AuraSmile Distinction</span>
+            <span className="text-xs font-extrabold text-teal-600 uppercase tracking-widest block">The {settings?.clinic_name || 'AuraSmile'} Distinction</span>
             <h2 className="text-3xl sm:text-4xl font-extrabold font-heading text-slate-900 tracking-tight">
               Why Discerning Patients Choose Us
             </h2>
             <p className="text-slate-600 font-medium">
-              We reject the cold, assembly-line model of traditional dentist clinics. At AuraSmile, we curate an exquisite, customized experience centering around your ultimate comfort and premium aesthetic desires.
+              We reject the cold, assembly-line model of traditional dentist clinics. At {settings?.clinic_name || 'AuraSmile'}, we curate an exquisite, customized experience centering around your ultimate comfort and premium aesthetic desires.
             </p>
           </div>
 

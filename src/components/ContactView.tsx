@@ -7,12 +7,21 @@ import {
   Sparkles, 
   Calendar
 } from 'lucide-react';
+import { useSettings } from '../SettingsContext';
 
 interface ContactViewProps {
   setCurrentPage: (page: PageType) => void;
 }
 
 export default function ContactView({ setCurrentPage }: ContactViewProps) {
+  const { settings } = useSettings();
+  const phoneVal = settings?.whatsapp_number || settings?.admin_whatsapp || '+1 (800) 555-0199';
+  const cleanPhone = phoneVal.replace(/[\s\-\(\)]/g, '');
+  const emailVal = settings?.contact_email || 'appointments@aurasmile.com';
+  const addressVal = settings?.clinic_address || '450 Wellness Plaza, Suite 100, New York, NY';
+  const clinicName = settings?.clinic_name || 'AuraSmile';
+  const adminName = settings?.admin_name || 'Dr. Evelyn Sterling';
+
   return (
     <div className="bg-slate-50 min-h-screen py-12 md:py-16 px-4 sm:px-6 lg:px-8" id="contact-view-page">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -44,7 +53,7 @@ export default function ContactView({ setCurrentPage }: ContactViewProps) {
               Seamless Dental Scheduling
             </h3>
             <p className="text-slate-600 font-medium text-sm leading-relaxed">
-              We have streamlined clinical bookings. Our automated assistant, Aura, coordinates in real-time with Dr. Evelyn Sterling's direct schedule to reserve your slot and generate a secure entry pass.
+              We have streamlined clinical bookings. Our automated assistant, Aura, coordinates in real-time with {adminName}'s direct schedule to reserve your slot and generate a secure entry pass.
             </p>
           </div>
 
@@ -126,8 +135,8 @@ export default function ContactView({ setCurrentPage }: ContactViewProps) {
             </div>
             <div>
               <h4 className="font-bold text-sm text-slate-900">Direct Clinical Voice Line</h4>
-              <a href="tel:+18005550199" className="text-sm text-teal-600 font-bold hover:underline hover:text-teal-500 transition block mt-1">
-                +1 (800) 555-0199
+              <a href={`tel:${cleanPhone}`} className="text-sm text-teal-600 font-bold hover:underline hover:text-teal-500 transition block mt-1">
+                {phoneVal}
               </a>
               <p className="text-xs text-slate-400 mt-1 font-medium">Available Mon-Sat for direct patient support.</p>
             </div>
@@ -139,8 +148,8 @@ export default function ContactView({ setCurrentPage }: ContactViewProps) {
             </div>
             <div>
               <h4 className="font-bold text-sm text-slate-900">Clinical Inquiries Email</h4>
-              <a href="mailto:appointments@aurasmile.com" className="text-sm text-teal-600 font-bold hover:underline hover:text-teal-500 transition block mt-1">
-                appointments@aurasmile.com
+              <a href={`mailto:${emailVal}`} className="text-sm text-teal-600 font-bold hover:underline hover:text-teal-500 transition block mt-1">
+                {emailVal}
               </a>
               <p className="text-xs text-slate-400 mt-1 font-medium">Replies within 2 hours for standard consult requests.</p>
             </div>
@@ -151,9 +160,9 @@ export default function ContactView({ setCurrentPage }: ContactViewProps) {
               <MapPin className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-sm text-slate-900">AuraSmile Headquarters</h4>
+              <h4 className="font-bold text-sm text-slate-900">{clinicName} Headquarters</h4>
               <span className="text-sm text-slate-700 font-semibold block mt-1">
-                450 Wellness Plaza, Suite 100, New York
+                {addressVal}
               </span>
               <p className="text-xs text-slate-400 mt-1 font-medium">Free valet parking available in the subterranean wellness decks.</p>
             </div>
@@ -182,26 +191,35 @@ export default function ContactView({ setCurrentPage }: ContactViewProps) {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
               <div className="relative flex items-center justify-center">
                 <div className="absolute w-12 h-12 rounded-full bg-teal-500/20 animate-ping" />
-                <div className="relative w-7 h-7 rounded-full bg-teal-500 text-white flex items-center justify-center shadow-lg border border-white">
-                  <Sparkles className="w-3.5 h-3.5" />
-                </div>
+                {settings?.clinic_logo ? (
+                  <img 
+                    src={settings.clinic_logo} 
+                    alt="Logo Pin" 
+                    className="relative w-8 h-8 rounded-full object-cover shadow-lg border border-white"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="relative w-7 h-7 rounded-full bg-teal-500 text-white flex items-center justify-center shadow-lg border border-white">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                )}
               </div>
               <span className="mt-2 text-xs font-bold bg-slate-900 text-white px-3 py-1 rounded-lg shadow-sm font-heading">
-                AuraSmile Clinic
+                {clinicName} Clinic
               </span>
             </div>
 
             {/* Subtitle directions banner */}
             <div className="flex justify-between items-center bg-white/90 backdrop-blur-xs p-3 rounded-xl border border-slate-100 mt-auto">
-              <div>
+              <div className="max-w-[70%] truncate">
                 <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Office Location</span>
-                <span className="text-[11px] font-extrabold text-slate-900">450 Wellness Plaza</span>
+                <span className="text-[11px] font-extrabold text-slate-900 block truncate">{addressVal}</span>
               </div>
               <a 
                 href="https://maps.google.com" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-teal-600 transition-colors"
+                className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-teal-600 transition-colors flex-shrink-0"
               >
                 Open Directions
               </a>

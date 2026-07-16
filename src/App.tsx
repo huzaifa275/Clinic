@@ -13,19 +13,28 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { FAQS_DATA } from './data';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelpCircle, ChevronDown, Sparkles } from 'lucide-react';
+import { useSettings } from './SettingsContext';
 
 export default function App() {
+  const { settings } = useSettings();
   const [currentPage, setCurrentPage] = useState<PageType>('home');
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeDeviceId, setActiveDeviceId] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
 
+  // Sync tab title with clinic name
+  useEffect(() => {
+    if (settings?.clinic_name) {
+      document.title = settings.clinic_name;
+    }
+  }, [settings?.clinic_name]);
+
   // Validate trusted device session on mount and when event fires
   const checkAuthStatus = async () => {
     try {
       setAuthLoading(true);
-      const res = await fetch('/api/auth/check');
+      const res = await fetch('/api/auth/check', { credentials: 'include' });
       const data = await res.json();
       if (data.trusted) {
         setIsAdmin(true);
@@ -47,9 +56,15 @@ export default function App() {
     checkAuthStatus();
 
     // Listen for chatbot successful administrative login event
-    const handleLoginSuccess = () => {
-      checkAuthStatus();
-      setCurrentPage('admin');
+    const handleLoginSuccess = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const device = customEvent.detail?.device;
+      
+      setIsAdmin(true);
+      if (device?.id) {
+        setActiveDeviceId(device.id);
+      }
+      changePage('admin');
     };
 
     window.addEventListener('admin-login-success', handleLoginSuccess);
@@ -102,7 +117,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       setIsAdmin(false);
       setActiveDeviceId('');
       changePage('home');
