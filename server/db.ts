@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { GoogleGenAI } from '@google/genai';
 
 // Types representing the 8 required database tables
 export interface ClinicSettings {
