@@ -405,7 +405,7 @@ app.post('/api/page-versions/:id/publish', authenticateAdmin, (req, res) => {
 });
 
 
-// --- CHAT ENDPOINT WITH BOOKING FLOW + GEMINI BACKUP ---
+// --- CHAT ENDPOINT WITH BOOKING FLOW + AI BACKUP ---
 
 // Helper: Check if query is dental or clinic related
 function isDentalOrClinicRelated(text: string): boolean {
@@ -443,7 +443,7 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
   httpOptions: {
     headers: {
-      'User-Agent': 'aistudio-build',
+      'User-Agent': 'aurasmile-scheduler',
     },
   },
 });
@@ -1041,7 +1041,7 @@ app.post('/api/chat', async (req, res) => {
       sessionState,
     });
   } catch (error) {
-    console.error('Gemini API call failed:', error);
+    console.error('AI Assistant service call failed:', error);
     res.json({
       text: "I recommend consulting our dentist for accurate advice.",
       sessionState,
