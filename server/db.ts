@@ -99,7 +99,9 @@ export interface DBState {
   failed_login_attempts: { [ip: string]: { count: number; lockedUntil: string | null } };
 }
 
-const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
+const SEED_PATH = path.join(process.cwd(), 'data', 'db.json');
+const TMP_PATH = '/tmp/db.json';
+const DB_PATH = process.env.NETLIFY ? TMP_PATH : (fs.existsSync(TMP_PATH) ? TMP_PATH : SEED_PATH);
 
 // Helper to hash passwords using PBKDF2
 export function hashPassword(password: string): string {
@@ -413,13 +415,10 @@ class Database {
 
   private load() {
     try {
-      const dir = path.dirname(DB_PATH);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
+      let activePath = fs.existsSync(TMP_PATH) ? TMP_PATH : (fs.existsSync(SEED_PATH) ? SEED_PATH : null);
 
-      if (fs.existsSync(DB_PATH)) {
-        const raw = fs.readFileSync(DB_PATH, 'utf-8');
+      if (activePath) {
+        const raw = fs.readFileSync(activePath, 'utf-8');
         const loaded = JSON.parse(raw);
         this.state = { ...this.state, ...loaded };
         
@@ -478,11 +477,29 @@ class Database {
 
   public save() {
     try {
-      const dir = path.dirname(DB_PATH);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      const dataStr = JSON.stringify(this.state, null, 2);
+      
+      // Write to /tmp/db.json
+      try {
+        const tmpDir = path.dirname(TMP_PATH);
+        if (!fs.existsSync(tmpDir)) {
+          fs.mkdirSync(tmpDir, { recursive: true });
+        }
+        fs.writeFileSync(TMP_PATH, dataStr, 'utf-8');
+      } catch (err) {
+        console.error('Failed to write to /tmp/db.json', err);
       }
-      fs.writeFileSync(DB_PATH, JSON.stringify(this.state, null, 2), 'utf-8');
+
+      // Also try writing to SEED_PATH if writeable (non-serverless local env)
+      try {
+        const seedDir = path.dirname(SEED_PATH);
+        if (!fs.existsSync(seedDir)) {
+          fs.mkdirSync(seedDir, { recursive: true });
+        }
+        fs.writeFileSync(SEED_PATH, dataStr, 'utf-8');
+      } catch (_) {
+        // Safe fallback for read-only serverless filesystem
+      }
     } catch (e) {
       console.error('Failed to save database.', e);
     }

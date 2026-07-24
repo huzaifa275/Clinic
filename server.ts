@@ -18,6 +18,17 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.set('trust proxy', 1);
 
+// Normalize Netlify Function request paths if routed via /.netlify/functions/api
+app.use((req, res, next) => {
+  if (req.url.startsWith('/.netlify/functions/api')) {
+    req.url = req.url.replace('/.netlify/functions/api', '/api');
+    if (!req.url.startsWith('/api')) {
+      req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+    }
+  }
+  next();
+});
+
 app.use(express.json());
 
 app.use(session({
@@ -2252,4 +2263,8 @@ async function startServer() {
   });
 }
 
-startServer();
+export { app };
+
+if (!process.env.NETLIFY && process.env.NODE_ENV !== 'test') {
+  startServer();
+}
